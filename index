@@ -1,0 +1,2676 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>電子焊接模擬器 - 焊接技巧練習小遊戲</title>
+    <style>
+        /* =========================================================
+           1. 全域設計變數與基礎重設（純原生 CSS3，零外部相依）
+           ========================================================= */
+        :root {
+            --bg-app: #070d19;
+            --bg-panel: #0f172a;
+            --border-subtle: rgba(148, 163, 184, 0.22);
+            --border-strong: rgba(148, 163, 184, 0.38);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            background: radial-gradient(circle at 50% 0%, #111c33 0%, var(--bg-app) 75%);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            overflow-x: hidden;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 14px 12px;
+            gap: 8px;
+        }
+
+        button {
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            background: none;
+            color: inherit;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* =========================================================
+           2. 頂部工具列與五點進度列
+           ========================================================= */
+        .app-shell {
+            width: 100%;
+            max-width: 1120px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .top-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: rgba(15, 23, 42, 0.86);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 10px 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .brand-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f59e0b, #ea580c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+            flex-shrink: 0;
+        }
+
+        .brand-title {
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+            color: #f8fafc;
+        }
+
+        .brand-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .segmented-group {
+            display: inline-flex;
+            background: #060b14;
+            padding: 3px;
+            border-radius: 12px;
+            border: 1px solid var(--border-subtle);
+            gap: 2px;
+        }
+
+        .seg-btn {
+            padding: 6px 11px;
+            border-radius: 9px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+
+        .seg-btn:hover {
+            color: #ffffff;
+        }
+
+        .seg-btn.active-sky {
+            background: linear-gradient(180deg, #0ea5e9, #0284c7);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+        }
+
+        .seg-btn.active-emerald {
+            background: linear-gradient(180deg, #10b981, #059669);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+        }
+
+        .seg-btn.active-amber {
+            background: linear-gradient(180deg, #f59e0b, #d97706);
+            color: #1c1917;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
+        }
+
+        .tool-pill-btn {
+            padding: 7px 12px;
+            border-radius: 11px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid var(--border-subtle);
+            color: #e2e8f0;
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+
+        .tool-pill-btn:hover {
+            background: rgba(51, 65, 85, 0.95);
+            border-color: var(--border-strong);
+        }
+
+        /* 焊點進度列 */
+        .progress-bar-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 7px 14px;
+        }
+
+        .joint-pills {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .joint-pill {
+            padding: 4px 11px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+        }
+
+        .joint-pill.current {
+            background: rgba(14, 165, 233, 0.2);
+            border-color: #38bdf8;
+            color: #e0f2fe;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+        }
+
+        .joint-pill.done-good {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #34d399;
+            color: #a7f3d0;
+        }
+
+        .joint-pill.done-warn {
+            background: rgba(245, 158, 11, 0.2);
+            border-color: #fbbf24;
+            color: #fde68a;
+        }
+
+        .joint-pill.done-bad {
+            background: rgba(244, 63, 94, 0.2);
+            border-color: #fb7185;
+            color: #fecdd3;
+        }
+
+        .avg-score-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .avg-badge {
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid var(--border-strong);
+            color: #f8fafc;
+            font-weight: 800;
+            font-family: var(--font-mono);
+        }
+
+        /* =========================================================
+           3. 主畫布舞台與中央放大 HUD 計量區
+           ========================================================= */
+        .stage-wrapper {
+            position: relative;
+            width: 100%;
+            height: clamp(445px, 58vh, 560px);
+            background: #080f1e;
+            border-radius: 20px;
+            border: 1.5px solid rgba(148, 163, 184, 0.26);
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.65), 0 12px 30px rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+        }
+
+        #workbenchCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        /* 頂部置中五步驟導引列 */
+        .step-guide-bar {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(7, 13, 25, 0.88);
+            backdrop-filter: blur(8px);
+            padding: 5px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            pointer-events: none;
+            max-width: 96%;
+            overflow-x: auto;
+        }
+
+        .step-pill {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 999px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        .step-pill.active {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+        }
+
+        .step-pill.done {
+            color: #34d399;
+        }
+
+        .step-sep {
+            color: #475569;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        /* 中央上方放大版三項計量卡片 + 即時教練提示 */
+        .center-hud-cluster {
+            position: absolute;
+            top: 48px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(650px, 62%);
+            z-index: 11;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            pointer-events: none;
+        }
+
+        .meters-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 9px;
+        }
+
+        .meter-card {
+            background: rgba(11, 19, 36, 0.90);
+            backdrop-filter: blur(10px);
+            border: 1.5px solid rgba(148, 163, 184, 0.28);
+            border-radius: 14px;
+            padding: 9px 11px 8px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.42);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .meter-card.state-good {
+            border-color: rgba(52, 211, 153, 0.75);
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
+        }
+
+        .meter-card.state-warn {
+            border-color: rgba(251, 191, 36, 0.75);
+        }
+
+        .meter-card.state-danger {
+            border-color: rgba(251, 113, 133, 0.85);
+            box-shadow: 0 0 16px rgba(244, 63, 94, 0.3);
+        }
+
+        .meter-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+
+        .meter-label {
+            font-size: 13px;
+            font-weight: 800;
+            color: #e2e8f0;
+            white-space: nowrap;
+        }
+
+        .meter-value {
+            font-size: 16px;
+            font-weight: 900;
+            font-family: var(--font-mono);
+            color: #ffffff;
+        }
+
+        .meter-track {
+            position: relative;
+            width: 100%;
+            height: 13px;
+            background: #1e293b;
+            border-radius: 999px;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+        }
+
+        .zone-optimal {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            background: rgba(16, 185, 129, 0.34);
+            border-left: 1.5px solid #34d399;
+            border-right: 1.5px solid #34d399;
+            z-index: 1;
+        }
+
+        .zone-danger {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            background: rgba(244, 63, 94, 0.28);
+            border-left: 1px dashed rgba(251, 113, 133, 0.85);
+            z-index: 1;
+        }
+
+        .zone-threshold {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #34d399;
+            z-index: 2;
+        }
+
+        .meter-fill {
+            position: relative;
+            z-index: 3;
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            transition: width 0.06s linear, background 0.15s ease;
+        }
+
+        .meter-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .meter-target {
+            color: #94a3b8;
+        }
+
+        .meter-status {
+            color: #38bdf8;
+        }
+
+        /* 即時教練引導橫幅 */
+        .coach-banner {
+            align-self: center;
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(56, 189, 248, 0.45);
+            border-radius: 999px;
+            padding: 5px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #e0f2fe;
+            text-align: center;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.38);
+            max-width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        .coach-banner.tone-amber {
+            border-color: rgba(251, 191, 36, 0.65);
+            color: #fef3c7;
+        }
+
+        .coach-banner.tone-emerald {
+            border-color: rgba(52, 211, 153, 0.75);
+            color: #d1fae5;
+            background: rgba(6, 78, 59, 0.88);
+        }
+
+        .coach-banner.tone-rose {
+            border-color: rgba(251, 113, 133, 0.75);
+            color: #ffe4e6;
+            background: rgba(136, 19, 55, 0.88);
+        }
+
+        /* 實戰測驗模式頂部徽章 */
+        .exam-mode-banner {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            background: rgba(120, 53, 15, 0.88);
+            border: 1px solid rgba(251, 191, 36, 0.65);
+            color: #fef3c7;
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 800;
+            pointer-events: none;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            white-space: nowrap;
+        }
+
+        /* 單一焊點完成診斷浮動卡片 */
+        .eval-toast-card {
+            position: absolute;
+            top: 48px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(440px, 90%);
+            z-index: 20;
+            background: rgba(15, 23, 42, 0.96);
+            backdrop-filter: blur(12px);
+            border: 1.5px solid rgba(56, 189, 248, 0.55);
+            border-radius: 18px;
+            padding: 14px 16px;
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.65);
+            animation: popIn 0.22s ease-out;
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: translate(-50%, -8px) scale(0.96); }
+            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+
+        .eval-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .eval-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #f8fafc;
+        }
+
+        .eval-score-pill {
+            font-size: 16px;
+            font-weight: 900;
+            font-family: var(--font-mono);
+            padding: 3px 12px;
+            border-radius: 999px;
+        }
+
+        .eval-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .eval-item-good { color: #6ee7b7; font-weight: 700; }
+        .eval-item-warn { color: #fcd34d; }
+        .eval-item-bad  { color: #fda4af; font-weight: 600; }
+
+        .eval-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .btn-retry-joint {
+            padding: 8px 13px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            background: rgba(51, 65, 85, 0.85);
+            color: #e2e8f0;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .btn-retry-joint:hover {
+            background: rgba(71, 85, 105, 0.95);
+        }
+
+        .btn-next-joint {
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.38);
+        }
+
+        .btn-next-joint:hover {
+            filter: brightness(1.08);
+        }
+
+        /* =========================================================
+           4. 下方雙手大型操作按鈕區
+           ========================================================= */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            width: 100%;
+        }
+
+        .order-1 { order: 1; }
+        .order-2 { order: 2; }
+        .order-3 { order: 3; }
+
+        .action-btn {
+            position: relative;
+            border-radius: 18px;
+            padding: 13px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.12s ease;
+            touch-action: manipulation;
+        }
+
+        .btn-solder {
+            background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+            color: #ffffff;
+            box-shadow: 0 5px 0 #075985, 0 8px 18px rgba(2, 132, 199, 0.35);
+            border: 1px solid rgba(125, 211, 252, 0.45);
+        }
+
+        .btn-sponge {
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+            color: #1c1917;
+            box-shadow: 0 5px 0 #b45309, 0 8px 18px rgba(245, 158, 11, 0.32);
+            border: 1px solid rgba(253, 230, 138, 0.65);
+        }
+
+        .btn-iron {
+            background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
+            color: #ffffff;
+            box-shadow: 0 5px 0 #9a3412, 0 8px 18px rgba(234, 88, 12, 0.35);
+            border: 1px solid rgba(253, 186, 116, 0.45);
+        }
+
+        .action-btn.pressed,
+        .action-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5), 0 3px 8px rgba(0, 0, 0, 0.3);
+            filter: brightness(1.08);
+        }
+
+        .btn-main-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 16px;
+            font-weight: 900;
+        }
+
+        .btn-sub-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 700;
+            opacity: 0.92;
+        }
+
+        .kbd-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1px 7px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 900;
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.32);
+        }
+
+        .btn-sponge .kbd-badge {
+            background: rgba(0, 0, 0, 0.14);
+            border-color: rgba(28, 25, 23, 0.3);
+            color: #1c1917;
+        }
+
+        .footer-tip {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            padding-top: 2px;
+        }
+
+        /* =========================================================
+           5. 彈窗系統（操作說明 & 焊接檢定成績單）
+           ========================================================= */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: rgba(2, 6, 23, 0.82);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-box {
+            width: 100%;
+            max-width: 680px;
+            max-height: 90vh;
+            overflow-y: auto;
+            background: #0f172a;
+            border: 1.5px solid rgba(148, 163, 184, 0.35);
+            border-radius: 22px;
+            padding: 22px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .modal-title {
+            font-size: 19px;
+            font-weight: 900;
+            color: #f8fafc;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: rgba(30, 41, 59, 0.9);
+            color: #cbd5e1;
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .help-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #cbd5e1;
+            margin-bottom: 18px;
+        }
+
+        .help-step-item {
+            display: flex;
+            gap: 10px;
+            background: rgba(30, 41, 59, 0.5);
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        .help-num {
+            font-weight: 900;
+            color: #38bdf8;
+            font-family: var(--font-mono);
+        }
+
+        /* 成績單專屬樣式 */
+        .report-hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(16, 185, 129, 0.16));
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            border-radius: 16px;
+            padding: 14px 18px;
+            margin-bottom: 14px;
+        }
+
+        .report-grade-badge {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            font-weight: 900;
+            font-family: var(--font-mono);
+            background: linear-gradient(135deg, #f59e0b, #ea580c);
+            color: #ffffff;
+            box-shadow: 0 6px 18px rgba(245, 158, 11, 0.4);
+            flex-shrink: 0;
+        }
+
+        .thumbs-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .thumb-card {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            text-align: center;
+        }
+
+        .thumb-canvas {
+            width: 100%;
+            height: 62px;
+            border-radius: 8px;
+            background: #070d19;
+        }
+
+        .report-advice-box {
+            background: rgba(30, 41, 59, 0.65);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 12px 14px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #e2e8f0;
+            margin-bottom: 16px;
+        }
+
+        .btn-primary-wide {
+            width: 100%;
+            padding: 12px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: #ffffff;
+            box-shadow: 0 6px 18px rgba(2, 132, 199, 0.4);
+        }
+
+        /* =========================================================
+           6. 響應式微調（手機與窄螢幕適配）
+           ========================================================= */
+        @media (max-width: 820px) {
+            .center-hud-cluster {
+                width: min(620px, 74%);
+                top: 46px;
+            }
+            .meter-label { font-size: 11.5px; }
+            .meter-value { font-size: 14px; }
+            .meter-footer { font-size: 10px; }
+        }
+
+        @media (max-width: 600px) {
+            .center-hud-cluster {
+                width: 94%;
+                top: 44px;
+            }
+            .meters-grid {
+                gap: 6px;
+            }
+            .meter-card {
+                padding: 7px 8px;
+            }
+            .meter-target {
+                display: none;
+            }
+            .btn-main-row {
+                font-size: 13px;
+            }
+            .thumbs-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <!-- 1. 頂部標題與模式切換工具列 -->
+        <header class="top-header">
+            <div class="brand-group">
+                <div class="brand-logo">⚡</div>
+                <div>
+                    <div class="brand-title">電子焊接模擬器</div>
+                    <div class="brand-sub">互動式焊接技巧訓練工作台</div>
+                </div>
+            </div>
+
+            <div class="toolbar-actions">
+                <!-- 慣用手模式切換：右撇子（預設） / 左撇子 -->
+                <div class="segmented-group" role="group" aria-label="慣用手模式切換">
+                    <button id="btnHandRight" class="seg-btn active-sky">✋ 右撇子</button>
+                    <button id="btnHandLeft" class="seg-btn">🤚 左撇子</button>
+                </div>
+
+                <!-- 教學輔助 / 實戰測驗切換 -->
+                <div class="segmented-group" role="group" aria-label="練習模式切換">
+                    <button id="btnModeTeach" class="seg-btn active-emerald">🎓 教學輔助</button>
+                    <button id="btnModeExam" class="seg-btn">🏆 實戰測驗</button>
+                </div>
+
+                <!-- 音效開關與說明 -->
+                <button id="btnSound" class="tool-pill-btn">🔊 音效開</button>
+                <button id="btnHelp" class="tool-pill-btn">❓ 教學</button>
+            </div>
+        </header>
+
+        <!-- 2. 五個焊點進度與目前平均分數 -->
+        <div class="progress-bar-row">
+            <div id="jointProgressList" class="joint-pills"></div>
+            <div class="avg-score-box">
+                <span>目前平均</span>
+                <span id="avgScoreBadge" class="avg-badge">-- 分</span>
+            </div>
+        </div>
+
+        <!-- 3. 主工作台舞台（HTML5 Canvas + 置中放大 HUD） -->
+        <section id="stageWrapper" class="stage-wrapper">
+            <canvas id="workbenchCanvas"></canvas>
+
+            <!-- 頂部置中：五步驟節奏提示列（教學模式顯示） -->
+            <div id="stepGuideBar" class="step-guide-bar">
+                <span id="step1" class="step-pill active">1.擦海綿(Space)</span>
+                <span class="step-sep">›</span>
+                <span id="step2" class="step-pill">2.預熱3秒(J)</span>
+                <span class="step-sep">›</span>
+                <span id="step3" class="step-pill">3.送焊錫(F)</span>
+                <span class="step-sep">›</span>
+                <span id="step4" class="step-pill">4.先收焊錫(放F)</span>
+                <span class="step-sep">›</span>
+                <span id="step5" class="step-pill">5.再提烙鐵(放J)</span>
+            </div>
+
+            <!-- 實戰測驗模式徽章（實戰模式顯示） -->
+            <div id="examModeBanner" class="exam-mode-banner hidden">
+                🏆 實戰測驗模式 — 請透過焊錫光澤、煙霧與聲音判斷最佳時機！
+            </div>
+
+            <!-- 中央上方放大版三項計量卡片 + 即時教練引導橫幅 -->
+            <div id="centerHudCluster" class="center-hud-cluster">
+                <div class="meters-grid">
+                    <!-- 卡片 1：預熱 / 加熱時間（最佳 2.5~3.8s，過熱警戒 >5.2s） -->
+                    <div id="cardHeat" class="meter-card">
+                        <div class="meter-header">
+                            <span class="meter-label">🔥 預熱 / 加熱</span>
+                            <span id="valHeat" class="meter-value">0.0s</span>
+                        </div>
+                        <div class="meter-track">
+                            <!-- 2.5s ~ 3.8s / 6.5s max => 38.5% ~ 58.5% -->
+                            <div class="zone-optimal" style="left: 38.5%; width: 20%;"></div>
+                            <!-- >5.2s / 6.5s max => 80.0% ~ 100% -->
+                            <div class="zone-danger" style="left: 80%; width: 20%;"></div>
+                            <div id="fillHeat" class="meter-fill" style="width: 0%; background: #f97316;"></div>
+                        </div>
+                        <div class="meter-footer">
+                            <span class="meter-target">最佳 2.5~3.8s</span>
+                            <span id="statusHeat" class="meter-status">待加熱</span>
+                        </div>
+                    </div>
+
+                    <!-- 卡片 2：焊錫量（完美小山 45%~72%） -->
+                    <div id="cardSolder" class="meter-card">
+                        <div class="meter-header">
+                            <span class="meter-label">💧 焊錫量</span>
+                            <span id="valSolder" class="meter-value">0%</span>
+                        </div>
+                        <div class="meter-track">
+                            <!-- 45% ~ 72% 完美小山 -->
+                            <div class="zone-optimal" style="left: 45%; width: 27%;"></div>
+                            <!-- >78% 過量成球 -->
+                            <div class="zone-danger" style="left: 78%; width: 22%;"></div>
+                            <div id="fillSolder" class="meter-fill" style="width: 0%; background: #38bdf8;"></div>
+                        </div>
+                        <div class="meter-footer">
+                            <span class="meter-target">小山 45%~72%</span>
+                            <span id="statusSolder" class="meter-status">未送錫</span>
+                        </div>
+                    </div>
+
+                    <!-- 卡片 3：烙鐵頭潔淨 -->
+                    <div id="cardClean" class="meter-card">
+                        <div class="meter-header">
+                            <span class="meter-label">✨ 烙鐵頭潔淨</span>
+                            <span id="valClean" class="meter-value">65%</span>
+                        </div>
+                        <div class="meter-track">
+                            <!-- 75% 潔淨標準線 -->
+                            <div class="zone-threshold" style="left: 75%;"></div>
+                            <div id="fillClean" class="meter-fill" style="width: 65%; background: #f59e0b;"></div>
+                        </div>
+                        <div class="meter-footer">
+                            <span class="meter-target">標準 ≥75%</span>
+                            <span id="statusClean" class="meter-status" style="color: #fbbf24;">建議擦拭</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 即時教練引導橫幅 -->
+                <div id="coachBanner" class="coach-banner tone-amber">
+                    💡 教練提示：焊接前請先按 Space 或點擊上方「濕海綿」擦亮烙鐵頭！
+                </div>
+            </div>
+
+            <!-- 單一焊點完成診斷浮動卡片 -->
+            <div id="evalToastCard" class="eval-toast-card hidden">
+                <div class="eval-header">
+                    <span id="evalTitle" class="eval-title">焊點 J1 檢驗結果</span>
+                    <span id="evalScorePill" class="eval-score-pill">95 分</span>
+                </div>
+                <ul id="evalFeedbackList" class="eval-list"></ul>
+                <div class="eval-actions">
+                    <button id="btnRetryJoint" class="btn-retry-joint">↺ 重練此點</button>
+                    <button id="btnNextJoint" class="btn-next-joint">下一個焊點 (Enter) ➔</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. 下方雙手大型操作按鈕區（依左/右撇子模式即時鏡像排列） -->
+        <div class="controls-grid">
+            <!-- 按鈕：送入焊錫絲（右撇子在左按 F，左撇子在右按 J） -->
+            <button id="btnSolder" class="action-btn btn-solder order-1">
+                <div class="btn-main-row">
+                    <span>🧵</span>
+                    <span>送入焊錫絲</span>
+                </div>
+                <div class="btn-sub-row">
+                    <span>長按</span>
+                    <span id="solderKeyBadge" class="kbd-badge">F</span>
+                    <span id="solderMouseHint">/ 滑鼠左鍵</span>
+                </div>
+            </button>
+
+            <!-- 按鈕：濕海綿清潔（固定置中按 Space） -->
+            <button id="btnSponge" class="action-btn btn-sponge order-2">
+                <div class="btn-main-row">
+                    <span>🧽</span>
+                    <span>濕海綿清潔</span>
+                </div>
+                <div class="btn-sub-row">
+                    <span>點擊或按</span>
+                    <span class="kbd-badge">Space</span>
+                </div>
+            </button>
+
+            <!-- 按鈕：烙鐵加熱焊點（右撇子在右按 J，左撇子在左按 F） -->
+            <button id="btnIron" class="action-btn btn-iron order-3">
+                <div class="btn-main-row">
+                    <span>🔥</span>
+                    <span>烙鐵加熱焊點</span>
+                </div>
+                <div class="btn-sub-row">
+                    <span>長按</span>
+                    <span id="ironKeyBadge" class="kbd-badge">J</span>
+                    <span id="ironMouseHint">/ 滑鼠右鍵</span>
+                </div>
+            </button>
+        </div>
+
+        <!-- 5. 底部操作捷徑提示 -->
+        <footer id="footerTip" class="footer-tip">
+            小秘訣（右撇子模式）：鍵盤長按 J 烙鐵加熱、F 送焊錫、Space 擦海綿；手機/平板可直接雙手同時長按下方按鈕！
+        </footer>
+    </div>
+
+    <!-- 教學說明彈窗 -->
+    <div id="helpModal" class="modal-backdrop hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 class="modal-title">📖 電子焊接五步驟教學指南</h2>
+                <button id="btnCloseHelp" class="modal-close">✕</button>
+            </div>
+            <div class="help-steps">
+                <div class="help-step-item">
+                    <span class="help-num">01</span>
+                    <div><strong>清潔烙鐵頭（<span class="kbd-badge">Space</span>）：</strong>焊接前先點擊畫布上的「🧽 濕海綿」或按 <span class="kbd-badge">Space</span> 擦拭氧化層，讓烙鐵頭保持銀亮導熱。</div>
+                </div>
+                <div class="help-step-item">
+                    <span class="help-num">02</span>
+                    <div><strong>預熱焊點約 3 秒（長按 <span id="helpIronKey" class="kbd-badge">J</span>）：</strong>將電烙鐵同時接觸銅箔焊盤與元件接腳，預熱約 <strong>2.5 ~ 3.8 秒</strong>達最佳工作溫度（太短會冷焊、超過 5.2 秒會過熱焦黑）。</div>
+                </div>
+                <div class="help-step-item">
+                    <span class="help-num">03</span>
+                    <div><strong>送入適量焊錫（同時長按 <span id="helpSolderKey" class="kbd-badge">F</span>）：</strong>保持烙鐵加熱，從另一側送入焊錫絲，讓焊錫自然熔化包覆接腳，形成<strong>光亮凹面小山（45% ~ 72%）</strong>。</div>
+                </div>
+                <div class="help-step-item">
+                    <span class="help-num">04</span>
+                    <div><strong>先撤離焊錫絲（放開 <span id="helpSolderKey2" class="kbd-badge">F</span>）：</strong>焊錫量足夠時，務必<strong>先放開焊錫絲</strong>，讓烙鐵繼續停留約 0.3 秒使焊點圓潤飽滿。</div>
+                </div>
+                <div class="help-step-item">
+                    <span class="help-num">05</span>
+                    <div><strong>最後提起電烙鐵（放開 <span id="helpIronKey2" class="kbd-badge">J</span>）：</strong>若先提烙鐵再收焊錫，焊錫會被拉出尖刺（拉尖）而扣分！完成 5 顆焊點後可查看完整檢定成績單。</div>
+                </div>
+            </div>
+            <button id="btnGotItHelp" class="btn-primary-wide">我了解了，開始練習焊接！</button>
+        </div>
+    </div>
+
+    <!-- 最終「焊接檢定成績單」彈窗 -->
+    <div id="reportModal" class="modal-backdrop hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 class="modal-title">🏅 電子焊接技能檢定成績單</h2>
+                <button id="btnCloseReport" class="modal-close">✕</button>
+            </div>
+
+            <div class="report-hero">
+                <div>
+                    <div style="font-size: 12px; color: #94a3b8; font-weight: 700;">綜合檢定評等</div>
+                    <div id="reportRankTitle" style="font-size: 20px; font-weight: 900; color: #f8fafc; margin: 2px 0;">S 級 · 金牌焊接職人</div>
+                    <div id="reportAvgText" style="font-size: 13px; color: #38bdf8; font-weight: 700;">五點總平均：96 分</div>
+                </div>
+                <div id="reportGradeBadge" class="report-grade-badge">S</div>
+            </div>
+
+            <div id="reportThumbsGrid" class="thumbs-grid"></div>
+
+            <div id="reportAdviceBox" class="report-advice-box"></div>
+
+            <button id="btnRestartAll" class="btn-primary-wide">🔄 重新開始新一輪 5 點檢定</button>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================================
+           1. Web Audio API 程序化音效引擎（零外部音檔相依）
+           ========================================================= */
+        class SolderingSoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+                this.heatOsc = null;
+                this.heatGain = null;
+                this.sizzleNode = null;
+                this.sizzleGain = null;
+            }
+
+            init() {
+                if (!this.enabled) return;
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) {
+                        this.ctx = new AudioCtx();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume().catch(() => {});
+                }
+            }
+
+            setEnabled(flag) {
+                this.enabled = flag;
+                if (!flag) {
+                    this.stopContinuous();
+                }
+            }
+
+            // 濕海綿擦拭滋滋水蒸氣聲
+            playSpongeSteam() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const duration = 0.45;
+                const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.45));
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 2600;
+                filter.Q.value = 1.4;
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.24, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.005, this.ctx.currentTime + duration);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
+
+            // 持續性加熱與焊錫熔化音效更新
+            updateContinuous(isHeating, isMelting) {
+                if (!this.enabled || !this.ctx) {
+                    this.stopContinuous();
+                    return;
+                }
+
+                if (isHeating) {
+                    if (!this.heatOsc) {
+                        this.heatOsc = this.ctx.createOscillator();
+                        this.heatGain = this.ctx.createGain();
+                        this.heatOsc.type = 'sine';
+                        this.heatOsc.frequency.value = 115;
+                        this.heatGain.gain.value = 0.03;
+                        this.heatOsc.connect(this.heatGain);
+                        this.heatGain.connect(this.ctx.destination);
+                        this.heatOsc.start();
+                    }
+                } else if (this.heatOsc) {
+                    try { this.heatOsc.stop(); } catch (_) {}
+                    this.heatOsc = null;
+                    this.heatGain = null;
+                }
+
+                if (isMelting) {
+                    if (!this.sizzleNode) {
+                        const bufLen = this.ctx.sampleRate * 1;
+                        const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+                        const ch = buf.getChannelData(0);
+                        for (let i = 0; i < bufLen; i++) {
+                            ch[i] = (Math.random() > 0.92 ? (Math.random() * 2 - 1) : (Math.random() * 0.25 - 0.125));
+                        }
+                        this.sizzleNode = this.ctx.createBufferSource();
+                        this.sizzleNode.buffer = buf;
+                        this.sizzleNode.loop = true;
+
+                        const hp = this.ctx.createBiquadFilter();
+                        hp.type = 'highpass';
+                        hp.frequency.value = 3200;
+
+                        this.sizzleGain = this.ctx.createGain();
+                        this.sizzleGain.gain.value = 0.09;
+
+                        this.sizzleNode.connect(hp);
+                        hp.connect(this.sizzleGain);
+                        this.sizzleGain.connect(this.ctx.destination);
+                        this.sizzleNode.start();
+                    }
+                } else if (this.sizzleNode) {
+                    try { this.sizzleNode.stop(); } catch (_) {}
+                    this.sizzleNode = null;
+                    this.sizzleGain = null;
+                }
+            }
+
+            stopContinuous() {
+                if (this.heatOsc) {
+                    try { this.heatOsc.stop(); } catch (_) {}
+                    this.heatOsc = null;
+                }
+                if (this.sizzleNode) {
+                    try { this.sizzleNode.stop(); } catch (_) {}
+                    this.sizzleNode = null;
+                }
+            }
+
+            // 完成焊點評分音效
+            playEvaluate(score) {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const notes = score >= 80 ? [523.25, 659.25, 783.99] : score >= 60 ? [440, 523.25] : [330, 261.63];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+                    gain.gain.setValueAtTime(0.14, now + idx * 0.09);
+                    gain.gain.exponentialRampToValueAtTime(0.005, now + idx * 0.09 + 0.28);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.09);
+                    osc.stop(now + idx * 0.09 + 0.3);
+                });
+            }
+        }
+
+        const sound = new SolderingSoundEngine();
+
+        /* =========================================================
+           2. 遊戲核心狀態與物理參數定義
+           ========================================================= */
+        const TOTAL_JOINTS = 5;
+
+        function createFreshJoint(index) {
+            return {
+                index,
+                status: 'idle',           // 'idle' | 'soldering' | 'evaluated'
+                heatTime: 0,              // 累計有效加熱時間（秒）
+                solderAmount: 0,          // 焊錫量（0 ~ 100）
+                hasFedSolder: false,      // 是否曾送入焊錫
+                preheatAtFirstSolder: null, // 首次送錫時的預熱秒數
+                coldSolderSeverity: 0,    // 冷焊程度（0 ~ 1）
+                overheatSeverity: 0,      // 過熱氧化程度（0 ~ 1）
+                sequenceError: false,     // 是否先提烙鐵再收焊錫（造成拉尖）
+                ironCleanAtStart: 100,    // 開始焊接此點時的烙鐵潔淨度
+                score: null,
+                feedback: []
+            };
+        }
+
+        const state = {
+            mode: 'teach',                // 'teach' | 'exam'
+            handedness: 'right',          // 'right' (預設右撇子: F焊錫/J烙鐵) | 'left' (左撇子: F烙鐵/J焊錫)
+            currentJointIdx: 0,
+            joints: Array.from({ length: TOTAL_JOINTS }, (_, i) => createFreshJoint(i)),
+            ironCleanliness: 65,          // 初始設為 65%，引導學生養成先擦海綿習慣
+            ironActive: false,
+            solderActive: false,
+            ironLerp: 0,                  // 烙鐵移動插值 0~1
+            solderLerp: 0,                // 焊錫絲移動插值 0~1
+            spongeAnimTimer: 0,           // 擦海綿動畫計時
+            pcbSlideOffset: 0,            // 切換焊點時的 PCB 滑動動畫偏移
+            particles: [],                // 煙霧與蒸氣粒子
+            smokeTimer: 0
+        };
+
+        const inputs = {
+            ironKey: false,
+            ironMouse: false,
+            ironBtn: false,
+            solderKey: false,
+            solderMouse: false,
+            solderBtn: false
+        };
+
+        function syncInputState() {
+            const cur = state.joints[state.currentJointIdx];
+            if (cur.status === 'evaluated') {
+                state.ironActive = false;
+                state.solderActive = false;
+                return;
+            }
+            const nextIron = inputs.ironKey || inputs.ironMouse || inputs.ironBtn;
+            const nextSolder = inputs.solderKey || inputs.solderMouse || inputs.solderBtn;
+
+            // 偵測「順序錯誤」：正在送焊錫時，卻先放開了烙鐵！
+            if (state.ironActive && !nextIron && (state.solderActive || nextSolder) && cur.solderAmount > 12) {
+                cur.sequenceError = true;
+            }
+
+            state.ironActive = nextIron;
+            state.solderActive = nextSolder;
+        }
+
+        /* =========================================================
+           3. DOM 元素快取與 Canvas 尺寸自適應
+           ========================================================= */
+        const canvasWrapper = document.getElementById('stageWrapper');
+        const canvas = document.getElementById('workbenchCanvas');
+        const ctx = canvas.getContext('2d');
+        let spongeHitbox = { x: 0, y: 0, w: 120, h: 42 };
+
+        function resizeCanvas() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const w = canvasWrapper.clientWidth;
+            const h = canvasWrapper.clientHeight;
+            canvas.width = Math.floor(w * dpr);
+            canvas.height = Math.floor(h * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        /* =========================================================
+           4. 慣用手切換（右撇子 / 左撇子）、模式切換與按鈕綁定
+           ========================================================= */
+        function setHandedness(hand) {
+            state.handedness = hand;
+            Object.keys(inputs).forEach(k => inputs[k] = false);
+            syncInputState();
+
+            const isRight = hand === 'right';
+            document.getElementById('btnHandRight').className = isRight ? 'seg-btn active-sky' : 'seg-btn';
+            document.getElementById('btnHandLeft').className = !isRight ? 'seg-btn active-sky' : 'seg-btn';
+
+            const btnSolder = document.getElementById('btnSolder');
+            const btnIron = document.getElementById('btnIron');
+            btnSolder.classList.remove('order-1', 'order-3');
+            btnIron.classList.remove('order-1', 'order-3');
+
+            const ironKey = isRight ? 'J' : 'F';
+            const solderKey = isRight ? 'F' : 'J';
+
+            if (isRight) {
+                btnSolder.classList.add('order-1');
+                btnIron.classList.add('order-3');
+                document.getElementById('solderMouseHint').textContent = '/ 滑鼠左鍵';
+                document.getElementById('ironMouseHint').textContent = '/ 滑鼠右鍵';
+            } else {
+                btnIron.classList.add('order-1');
+                btnSolder.classList.add('order-3');
+                document.getElementById('ironMouseHint').textContent = '/ 滑鼠左鍵';
+                document.getElementById('solderMouseHint').textContent = '/ 滑鼠右鍵';
+            }
+
+            document.getElementById('ironKeyBadge').textContent = ironKey;
+            document.getElementById('solderKeyBadge').textContent = solderKey;
+            document.getElementById('helpIronKey').textContent = ironKey;
+            document.getElementById('helpIronKey2').textContent = ironKey;
+            document.getElementById('helpSolderKey').textContent = solderKey;
+            document.getElementById('helpSolderKey2').textContent = solderKey;
+
+            document.getElementById('step1').textContent = '1.擦海綿(Space)';
+            document.getElementById('step2').textContent = `2.預熱3秒(${ironKey})`;
+            document.getElementById('step3').textContent = `3.送焊錫(${solderKey})`;
+            document.getElementById('step4').textContent = `4.先收焊錫(放${solderKey})`;
+            document.getElementById('step5').textContent = `5.再提烙鐵(放${ironKey})`;
+
+            const label = isRight ? '右撇子模式' : '左撇子模式';
+            document.getElementById('footerTip').textContent =
+                `小秘訣（${label}）：鍵盤長按 ${ironKey} 烙鐵加熱、${solderKey} 送焊錫、Space 擦海綿；手機/平板可直接雙手同時長按下方按鈕！`;
+
+            updateHUD();
+        }
+
+        function setMode(mode) {
+            state.mode = mode;
+            const isTeach = mode === 'teach';
+            document.getElementById('btnModeTeach').className = isTeach ? 'seg-btn active-emerald' : 'seg-btn';
+            document.getElementById('btnModeExam').className = !isTeach ? 'seg-btn active-amber' : 'seg-btn';
+
+            document.getElementById('stepGuideBar').classList.toggle('hidden', !isTeach);
+            document.getElementById('centerHudCluster').classList.toggle('hidden', !isTeach);
+            document.getElementById('examModeBanner').classList.toggle('hidden', isTeach);
+        }
+
+        document.getElementById('btnHandRight').addEventListener('click', () => setHandedness('right'));
+        document.getElementById('btnHandLeft').addEventListener('click', () => setHandedness('left'));
+        document.getElementById('btnModeTeach').addEventListener('click', () => setMode('teach'));
+        document.getElementById('btnModeExam').addEventListener('click', () => setMode('exam'));
+
+        document.getElementById('btnSound').addEventListener('click', (e) => {
+            const next = !sound.enabled;
+            sound.setEnabled(next);
+            if (next) sound.init();
+            e.currentTarget.textContent = next ? '🔊 音效開' : '🔇 音效關';
+        });
+
+        document.getElementById('btnHelp').addEventListener('click', () => {
+            document.getElementById('helpModal').classList.remove('hidden');
+        });
+        document.getElementById('btnCloseHelp').addEventListener('click', () => {
+            document.getElementById('helpModal').classList.add('hidden');
+        });
+        document.getElementById('btnGotItHelp').addEventListener('click', () => {
+            document.getElementById('helpModal').classList.add('hidden');
+        });
+
+        document.getElementById('btnCloseReport').addEventListener('click', () => {
+            document.getElementById('reportModal').classList.add('hidden');
+        });
+        document.getElementById('btnRestartAll').addEventListener('click', () => {
+            document.getElementById('reportModal').classList.add('hidden');
+            resetAllJoints();
+        });
+
+        function triggerSpongeClean() {
+            const cur = state.joints[state.currentJointIdx];
+            if (cur.status === 'evaluated') return;
+            sound.init();
+            sound.playSpongeSteam();
+            state.ironCleanliness = 100;
+            state.spongeAnimTimer = 0.52;
+
+            for (let i = 0; i < 16; i++) {
+                state.particles.push({
+                    x: spongeHitbox.x + spongeHitbox.w * (0.2 + Math.random() * 0.6),
+                    y: spongeHitbox.y + 8,
+                    vx: (Math.random() - 0.5) * 45,
+                    vy: -35 - Math.random() * 45,
+                    size: 4 + Math.random() * 6,
+                    alpha: 0.85,
+                    life: 0.65 + Math.random() * 0.35,
+                    maxLife: 1.0,
+                    color: '240, 249, 255'
+                });
+            }
+            updateHUD();
+        }
+
+        function bindHoldButton(btnId, inputField) {
+            const btn = document.getElementById(btnId);
+            const press = (e) => {
+                e.preventDefault();
+                sound.init();
+                inputs[inputField] = true;
+                btn.classList.add('pressed');
+                syncInputState();
+            };
+            const release = (e) => {
+                if (e) e.preventDefault();
+                inputs[inputField] = false;
+                btn.classList.remove('pressed');
+                syncInputState();
+            };
+            btn.addEventListener('mousedown', press);
+            btn.addEventListener('mouseup', release);
+            btn.addEventListener('mouseleave', release);
+            btn.addEventListener('touchstart', press, { passive: false });
+            btn.addEventListener('touchend', release, { passive: false });
+            btn.addEventListener('touchcancel', release, { passive: false });
+        }
+
+        bindHoldButton('btnSolder', 'solderBtn');
+        bindHoldButton('btnIron', 'ironBtn');
+
+        const btnSponge = document.getElementById('btnSponge');
+        btnSponge.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            btnSponge.classList.add('pressed');
+            triggerSpongeClean();
+        });
+        btnSponge.addEventListener('mouseup', () => btnSponge.classList.remove('pressed'));
+        btnSponge.addEventListener('mouseleave', () => btnSponge.classList.remove('pressed'));
+        btnSponge.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            btnSponge.classList.add('pressed');
+            triggerSpongeClean();
+        }, { passive: false });
+        btnSponge.addEventListener('touchend', () => btnSponge.classList.remove('pressed'));
+
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        canvas.addEventListener('mousedown', (e) => {
+            sound.init();
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            if (e.button === 0 &&
+                mx >= spongeHitbox.x - 12 && mx <= spongeHitbox.x + spongeHitbox.w + 12 &&
+                my >= spongeHitbox.y - 12 && my <= spongeHitbox.y + spongeHitbox.h + 16) {
+                triggerSpongeClean();
+                return;
+            }
+
+            const isRight = state.handedness === 'right';
+            if (e.button === 0) {
+                if (isRight) inputs.solderMouse = true;
+                else inputs.ironMouse = true;
+                syncInputState();
+            } else if (e.button === 2) {
+                if (isRight) inputs.ironMouse = true;
+                else inputs.solderMouse = true;
+                syncInputState();
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 0) {
+                inputs.solderMouse = false;
+                inputs.ironMouse = false;
+                syncInputState();
+            } else if (e.button === 2) {
+                inputs.ironMouse = false;
+                inputs.solderMouse = false;
+                syncInputState();
+            }
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                const tx = t.clientX - rect.left;
+                const ty = t.clientY - rect.top;
+                if (tx >= spongeHitbox.x - 14 && tx <= spongeHitbox.x + spongeHitbox.w + 14 &&
+                    ty >= spongeHitbox.y - 14 && ty <= spongeHitbox.y + spongeHitbox.h + 18) {
+                    e.preventDefault();
+                    triggerSpongeClean();
+                    return;
+                }
+            }
+        }, { passive: false });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            const code = e.code;
+
+            if (!document.getElementById('reportModal').classList.contains('hidden') ||
+                !document.getElementById('helpModal').classList.contains('hidden')) {
+                return;
+            }
+
+            if (code === 'Space') {
+                e.preventDefault();
+                triggerSpongeClean();
+            } else if (code === 'KeyF') {
+                sound.init();
+                if (state.handedness === 'right') {
+                    inputs.solderKey = true;
+                    document.getElementById('btnSolder').classList.add('pressed');
+                } else {
+                    inputs.ironKey = true;
+                    document.getElementById('btnIron').classList.add('pressed');
+                }
+                syncInputState();
+            } else if (code === 'KeyJ') {
+                sound.init();
+                if (state.handedness === 'right') {
+                    inputs.ironKey = true;
+                    document.getElementById('btnIron').classList.add('pressed');
+                } else {
+                    inputs.solderKey = true;
+                    document.getElementById('btnSolder').classList.add('pressed');
+                }
+                syncInputState();
+            } else if (code === 'Enter') {
+                const cur = state.joints[state.currentJointIdx];
+                if (cur.status === 'evaluated') {
+                    goToNextJoint();
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const code = e.code;
+            if (code === 'KeyF') {
+                if (state.handedness === 'right') {
+                    inputs.solderKey = false;
+                    document.getElementById('btnSolder').classList.remove('pressed');
+                } else {
+                    inputs.ironKey = false;
+                    document.getElementById('btnIron').classList.remove('pressed');
+                }
+                syncInputState();
+            } else if (code === 'KeyJ') {
+                if (state.handedness === 'right') {
+                    inputs.ironKey = false;
+                    document.getElementById('btnIron').classList.remove('pressed');
+                } else {
+                    inputs.solderKey = false;
+                    document.getElementById('btnSolder').classList.remove('pressed');
+                }
+                syncInputState();
+            }
+        });
+
+        window.addEventListener('blur', () => {
+            Object.keys(inputs).forEach(k => inputs[k] = false);
+            document.getElementById('btnSolder').classList.remove('pressed');
+            document.getElementById('btnIron').classList.remove('pressed');
+            syncInputState();
+        });
+
+        /* =========================================================
+           5. 焊接物理模擬、評分診斷與進度管理
+           ========================================================= */
+        function spawnSmokeParticle(isBurnt) {
+            const w = canvasWrapper.clientWidth;
+            const h = canvasWrapper.clientHeight;
+            const layout = getLayoutMetrics(w, h);
+            state.particles.push({
+                x: layout.activePinX + (Math.random() - 0.5) * 14,
+                y: layout.pcbY - 12,
+                vx: (Math.random() - 0.5) * 26,
+                vy: -28 - Math.random() * 34,
+                size: 3.5 + Math.random() * 5,
+                alpha: isBurnt ? 0.78 : 0.55,
+                life: 0.75 + Math.random() * 0.4,
+                maxLife: 1.15,
+                color: isBurnt ? '120, 113, 108' : '226, 232, 240'
+            });
+        }
+
+        function updateSimulation(dt) {
+            const targetIron = state.ironActive ? 1 : 0;
+            const targetSolder = state.solderActive ? 1 : 0;
+            state.ironLerp += (targetIron - state.ironLerp) * Math.min(1, dt * 16);
+            state.solderLerp += (targetSolder - state.solderLerp) * Math.min(1, dt * 16);
+
+            if (state.spongeAnimTimer > 0) {
+                state.spongeAnimTimer = Math.max(0, state.spongeAnimTimer - dt);
+            }
+            if (Math.abs(state.pcbSlideOffset) > 0.2) {
+                state.pcbSlideOffset *= Math.pow(0.04, dt);
+            } else {
+                state.pcbSlideOffset = 0;
+            }
+
+            for (let i = state.particles.length - 1; i >= 0; i--) {
+                const p = state.particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.size += 6 * dt;
+                p.life -= dt;
+                if (p.life <= 0) {
+                    state.particles.splice(i, 1);
+                }
+            }
+
+            const j = state.joints[state.currentJointIdx];
+            if (j.status === 'evaluated') {
+                sound.updateContinuous(false, false);
+                return;
+            }
+
+            const ironTouching = state.ironActive && state.ironLerp > 0.72 && state.spongeAnimTimer <= 0;
+            const solderTouching = state.solderActive && state.solderLerp > 0.72;
+
+            if ((ironTouching || solderTouching) && j.status === 'idle') {
+                j.status = 'soldering';
+                j.ironCleanAtStart = state.ironCleanliness;
+            }
+
+            if (ironTouching) {
+                const efficiency = 0.65 + (state.ironCleanliness / 100) * 0.35;
+                j.heatTime += dt * efficiency;
+                state.ironCleanliness = Math.max(15, state.ironCleanliness - dt * 3.4);
+
+                // 超過 5.2 秒進入過熱氧化區間
+                if (j.heatTime > 5.2) {
+                    j.overheatSeverity = Math.min(1, j.overheatSeverity + dt * 0.6);
+                }
+
+                state.smokeTimer += dt;
+                if (state.smokeTimer > (j.heatTime > 5.2 ? 0.08 : 0.18)) {
+                    state.smokeTimer = 0;
+                    spawnSmokeParticle(j.heatTime > 5.2);
+                }
+            }
+
+            let isMelting = false;
+            if (solderTouching) {
+                if (ironTouching && j.heatTime >= 0.45) {
+                    isMelting = true;
+                    if (!j.hasFedSolder) {
+                        j.hasFedSolder = true;
+                        j.preheatAtFirstSolder = j.heatTime;
+                    }
+                    if (j.heatTime < 2.2) {
+                        j.coldSolderSeverity = Math.min(1, j.coldSolderSeverity + dt * 0.85);
+                    }
+                    j.solderAmount = Math.min(100, j.solderAmount + dt * 34);
+                } else {
+                    j.hasFedSolder = true;
+                    if (j.preheatAtFirstSolder === null) j.preheatAtFirstSolder = 0;
+                    j.coldSolderSeverity = Math.min(1, j.coldSolderSeverity + dt * 1.1);
+                    j.solderAmount = Math.min(100, j.solderAmount + dt * 14);
+                }
+            }
+
+            sound.updateContinuous(ironTouching, isMelting);
+
+            if (j.status === 'soldering' && !state.ironActive && !state.solderActive) {
+                if (j.heatTime < 0.4 && j.solderAmount < 3) {
+                    Object.assign(j, createFreshJoint(j.index));
+                } else {
+                    evaluateCurrentJoint();
+                }
+            }
+        }
+
+        function evaluateCurrentJoint() {
+            const j = state.joints[state.currentJointIdx];
+            j.status = 'evaluated';
+            sound.updateContinuous(false, false);
+
+            let score = 100;
+            const feedback = [];
+
+            // 1. 檢查烙鐵頭潔淨度
+            if (j.ironCleanAtStart < 75) {
+                score -= 15;
+                feedback.push({ type: 'bad', text: `🧽 焊接前未清潔烙鐵頭（潔淨度僅 ${Math.round(j.ironCleanAtStart)}%）(-15)` });
+            } else {
+                feedback.push({ type: 'good', text: '✨ 烙鐵頭保持潔淨光亮，導熱順暢' });
+            }
+
+            // 2. 檢查預熱時間與冷焊
+            const preheat = j.preheatAtFirstSolder ?? 0;
+            if (!j.hasFedSolder || j.solderAmount < 8) {
+                score -= 45;
+                feedback.push({ type: 'bad', text: '❌ 完全未送入焊錫，形成嚴重空焊 (-45)' });
+            } else if (preheat < 2.0 || j.coldSolderSeverity > 0.35) {
+                score -= 25;
+                feedback.push({ type: 'bad', text: `❄️ 預熱不足（僅 ${preheat.toFixed(1)}s），焊錫未充分浸潤造成冷焊 (-25)` });
+            } else if (preheat < 2.4) {
+                score -= 10;
+                feedback.push({ type: 'warn', text: `⏱️ 預熱略短（${preheat.toFixed(1)}s），建議達 2.5~3.8s (-10)` });
+            } else if (preheat > 4.2) {
+                score -= 10;
+                feedback.push({ type: 'warn', text: `⏱️ 預熱偏長（${preheat.toFixed(1)}s），下次可早點送錫 (-10)` });
+            } else {
+                feedback.push({ type: 'good', text: `🔥 預熱時機精準（${preheat.toFixed(1)}s），焊盤與接腳受熱均勻` });
+            }
+
+            // 3. 檢查過熱氧化（>5.2s）
+            if (j.heatTime > 5.7 || j.overheatSeverity > 0.45) {
+                score -= 25;
+                feedback.push({ type: 'bad', text: `🥵 加熱過久（總計 ${j.heatTime.toFixed(1)}s），焊點氧化黯淡且焊盤焦黑 (-25)` });
+            } else if (j.heatTime > 5.2) {
+                score -= 12;
+                feedback.push({ type: 'warn', text: `⚠️ 加熱超過 5.2s（${j.heatTime.toFixed(1)}s），焊點光澤略為黯淡 (-12)` });
+            }
+
+            // 4. 檢查焊錫量與外觀形態
+            const amt = Math.round(j.solderAmount);
+            if (amt >= 8 && amt < 35) {
+                score -= 22;
+                feedback.push({ type: 'bad', text: `📉 焊錫量過少（${amt}%），未完整包覆接腳 (-22)` });
+            } else if (amt >= 35 && amt < 45) {
+                score -= 10;
+                feedback.push({ type: 'warn', text: `📉 焊錫略少（${amt}%），理想小山為 45%~72% (-10)` });
+            } else if (amt > 82) {
+                score -= 22;
+                feedback.push({ type: 'bad', text: `⚪ 焊錫過多（${amt}%），鼓成圓球狀容易短路 (-22)` });
+            } else if (amt > 72) {
+                score -= 10;
+                feedback.push({ type: 'warn', text: `⚪ 焊錫略多（${amt}%），稍微超出凹面小山 (-10)` });
+            } else if (amt >= 45 && amt <= 72) {
+                feedback.push({ type: 'good', text: `⛰️ 焊錫量完美（${amt}%），呈現標準光亮凹面小山` });
+            }
+
+            // 5. 檢查撤離順序（先收焊錫、再提烙鐵）
+            if (j.sequenceError) {
+                score -= 20;
+                feedback.push({ type: 'bad', text: '⚡ 先提烙鐵再收焊錫，焊點被拉出尖刺（拉尖）(-20)' });
+            }
+
+            j.score = Math.max(0, Math.min(100, score));
+            j.feedback = feedback;
+
+            sound.playEvaluate(j.score);
+            renderProgressRow();
+            showEvalToast(j);
+        }
+
+        function showEvalToast(j) {
+            const card = document.getElementById('evalToastCard');
+            const title = document.getElementById('evalTitle');
+            const pill = document.getElementById('evalScorePill');
+            const list = document.getElementById('evalFeedbackList');
+            const nextBtn = document.getElementById('btnNextJoint');
+
+            title.textContent = `焊點 J${j.index + 1} 檢驗結果`;
+            pill.textContent = `${j.score} 分`;
+
+            if (j.score >= 85) {
+                pill.style.background = 'rgba(16, 185, 129, 0.25)';
+                pill.style.color = '#6ee7b7';
+            } else if (j.score >= 65) {
+                pill.style.background = 'rgba(245, 158, 11, 0.25)';
+                pill.style.color = '#fcd34d';
+            } else {
+                pill.style.background = 'rgba(244, 63, 94, 0.25)';
+                pill.style.color = '#fda4af';
+            }
+
+            list.innerHTML = j.feedback.map(f =>
+                `<li class="eval-item-${f.type}">${f.text}</li>`
+            ).join('');
+
+            nextBtn.textContent = state.currentJointIdx < TOTAL_JOINTS - 1
+                ? '下一個焊點 (Enter) ➔'
+                : '查看檢定成績單 🏅';
+
+            card.classList.remove('hidden');
+        }
+
+        document.getElementById('btnRetryJoint').addEventListener('click', () => {
+            const idx = state.currentJointIdx;
+            state.joints[idx] = createFreshJoint(idx);
+            document.getElementById('evalToastCard').classList.add('hidden');
+            renderProgressRow();
+            updateHUD();
+        });
+
+        function goToNextJoint() {
+            document.getElementById('evalToastCard').classList.add('hidden');
+            if (state.currentJointIdx < TOTAL_JOINTS - 1) {
+                state.currentJointIdx += 1;
+                state.pcbSlideOffset = 140;
+                renderProgressRow();
+                updateHUD();
+            } else {
+                openFinalReportModal();
+            }
+        }
+
+        document.getElementById('btnNextJoint').addEventListener('click', goToNextJoint);
+
+        function resetAllJoints() {
+            state.currentJointIdx = 0;
+            state.joints = Array.from({ length: TOTAL_JOINTS }, (_, i) => createFreshJoint(i));
+            state.ironCleanliness = 65;
+            state.particles = [];
+            document.getElementById('evalToastCard').classList.add('hidden');
+            renderProgressRow();
+            updateHUD();
+        }
+
+        /* =========================================================
+           6. 頂部進度條與中央放大 HUD 面板即時更新
+           ========================================================= */
+        function renderProgressRow() {
+            const container = document.getElementById('jointProgressList');
+            let sum = 0;
+            let count = 0;
+
+            container.innerHTML = state.joints.map((j, idx) => {
+                let cls = 'joint-pill';
+                let label = `J${idx + 1}`;
+                if (j.status === 'evaluated') {
+                    sum += j.score;
+                    count += 1;
+                    label += ` · ${j.score}分`;
+                    if (j.score >= 85) cls += ' done-good';
+                    else if (j.score >= 65) cls += ' done-warn';
+                    else cls += ' done-bad';
+                } else if (idx === state.currentJointIdx) {
+                    cls += ' current';
+                    label += ' (進行中)';
+                }
+                return `<div class="${cls}">${label}</div>`;
+            }).join('');
+
+            const avgBadge = document.getElementById('avgScoreBadge');
+            avgBadge.textContent = count > 0 ? `${Math.round(sum / count)} 分` : '-- 分';
+        }
+
+        function updateHUD() {
+            const j = state.joints[state.currentJointIdx];
+            const isRight = state.handedness === 'right';
+            const ironKey = isRight ? 'J' : 'F';
+            const solderKey = isRight ? 'F' : 'J';
+
+            // 1) 預熱 / 加熱時間卡片
+            const heatPct = Math.min(100, (j.heatTime / 6.5) * 100);
+            document.getElementById('valHeat').textContent = `${j.heatTime.toFixed(1)}s`;
+            const fillHeat = document.getElementById('fillHeat');
+            const cardHeat = document.getElementById('cardHeat');
+            const statusHeat = document.getElementById('statusHeat');
+            fillHeat.style.width = `${heatPct}%`;
+
+            cardHeat.className = 'meter-card';
+            if (j.heatTime === 0) {
+                fillHeat.style.background = '#f97316';
+                statusHeat.textContent = '待加熱';
+                statusHeat.style.color = '#94a3b8';
+            } else if (j.heatTime < 2.5) {
+                fillHeat.style.background = '#fbbf24';
+                statusHeat.textContent = '預熱升溫中';
+                statusHeat.style.color = '#fbbf24';
+            } else if (j.heatTime <= 3.8) {
+                fillHeat.style.background = '#10b981';
+                cardHeat.classList.add('state-good');
+                statusHeat.textContent = '★ 最佳溫度';
+                statusHeat.style.color = '#34d399';
+            } else if (j.heatTime <= 5.2) {
+                fillHeat.style.background = '#f59e0b';
+                cardHeat.classList.add('state-warn');
+                statusHeat.textContent = '溫度偏高';
+                statusHeat.style.color = '#fbbf24';
+            } else {
+                fillHeat.style.background = '#f43f5e';
+                cardHeat.classList.add('state-danger');
+                statusHeat.textContent = '⚠️ 過熱氧化';
+                statusHeat.style.color = '#fb7185';
+            }
+
+            // 2) 焊錫量卡片
+            const amt = Math.round(j.solderAmount);
+            document.getElementById('valSolder').textContent = `${amt}%`;
+            const fillSolder = document.getElementById('fillSolder');
+            const cardSolder = document.getElementById('cardSolder');
+            const statusSolder = document.getElementById('statusSolder');
+            fillSolder.style.width = `${amt}%`;
+
+            cardSolder.className = 'meter-card';
+            if (amt === 0) {
+                fillSolder.style.background = '#38bdf8';
+                statusSolder.textContent = '未送錫';
+                statusSolder.style.color = '#94a3b8';
+            } else if (amt < 45) {
+                fillSolder.style.background = '#38bdf8';
+                statusSolder.textContent = '焊錫偏少';
+                statusSolder.style.color = '#38bdf8';
+            } else if (amt <= 72) {
+                fillSolder.style.background = '#10b981';
+                cardSolder.classList.add('state-good');
+                statusSolder.textContent = '★ 完美小山';
+                statusSolder.style.color = '#34d399';
+            } else {
+                fillSolder.style.background = '#f43f5e';
+                cardSolder.classList.add('state-danger');
+                statusSolder.textContent = '⚠️ 焊錫過多';
+                statusSolder.style.color = '#fb7185';
+            }
+
+            // 3) 烙鐵頭潔淨卡片
+            const clean = Math.round(state.ironCleanliness);
+            document.getElementById('valClean').textContent = `${clean}%`;
+            const fillClean = document.getElementById('fillClean');
+            const cardClean = document.getElementById('cardClean');
+            const statusClean = document.getElementById('statusClean');
+            fillClean.style.width = `${clean}%`;
+
+            cardClean.className = 'meter-card';
+            if (clean >= 75) {
+                fillClean.style.background = '#10b981';
+                statusClean.textContent = '★ 潔淨光亮';
+                statusClean.style.color = '#34d399';
+            } else if (clean >= 45) {
+                fillClean.style.background = '#f59e0b';
+                cardClean.classList.add('state-warn');
+                statusClean.textContent = '建議擦拭';
+                statusClean.style.color = '#fbbf24';
+            } else {
+                fillClean.style.background = '#f43f5e';
+                cardClean.classList.add('state-danger');
+                statusClean.textContent = '❌ 氧化髒污';
+                statusClean.style.color = '#fb7185';
+            }
+
+            // 4) 更新五步驟高亮與即時教練橫幅
+            const steps = [1, 2, 3, 4, 5].map(n => document.getElementById(`step${n}`));
+            steps.forEach(el => el.classList.remove('active', 'done'));
+
+            const coach = document.getElementById('coachBanner');
+            coach.className = 'coach-banner';
+
+            if (j.status === 'evaluated') {
+                steps.forEach(el => el.classList.add('done'));
+                coach.classList.add('tone-emerald');
+                coach.textContent = `✅ 焊點 J${j.index + 1} 已完成！可檢視診斷結果或按 Enter 進入下一點。`;
+                return;
+            }
+
+            if (state.ironCleanliness < 75 && j.heatTime === 0) {
+                steps[0].classList.add('active');
+                coach.classList.add('tone-amber');
+                coach.textContent = '💡 教練提示：焊接前請先按 Space 或點擊「濕海綿」擦亮烙鐵頭！';
+            } else if (!state.ironActive && j.heatTime === 0) {
+                steps[0].classList.add('done');
+                steps[1].classList.add('active');
+                coach.textContent = `💡 教練提示：烙鐵頭已潔淨！請長按「${ironKey}」將烙鐵靠上焊點預熱約 3 秒。`;
+            } else if (state.ironActive && j.heatTime < 2.5 && !state.solderActive) {
+                steps[0].classList.add('done');
+                steps[1].classList.add('active');
+                coach.classList.add('tone-amber');
+                coach.textContent = `🔥 正在預熱焊點（${j.heatTime.toFixed(1)}s / 目標 2.5~3.8s）… 先別急著送焊錫！`;
+            } else if (state.ironActive && j.heatTime >= 2.5 && amt < 45 && !state.solderActive) {
+                steps[0].classList.add('done');
+                steps[1].classList.add('done');
+                steps[2].classList.add('active');
+                coach.classList.add('tone-emerald');
+                coach.textContent = `✨ 預熱完成！保持按住「${ironKey}」，現在同時長按「${solderKey}」送入焊錫絲！`;
+            } else if (state.solderActive && amt < 45) {
+                steps[0].classList.add('done');
+                steps[1].classList.add('done');
+                steps[2].classList.add('active');
+                coach.textContent = `💧 焊錫熔化中（${amt}%）… 繼續送錫直到進入 45%~72% 完美小山區間！`;
+            } else if (state.solderActive && amt >= 45 && amt <= 72) {
+                steps[0].classList.add('done');
+                steps[1].classList.add('done');
+                steps[2].classList.add('done');
+                steps[3].classList.add('active');
+                coach.classList.add('tone-emerald');
+                coach.textContent = `🎯 達到完美小山（${amt}%）！請立刻「先放開 ${solderKey}」撤離焊錫絲！`;
+            } else if (amt > 72) {
+                steps[3].classList.add('active');
+                coach.classList.add('tone-rose');
+                coach.textContent = `⚠️ 焊錫量已超過 72%（${amt}%）！快放開 ${solderKey} 並提起烙鐵 ${ironKey}！`;
+            } else if (!state.solderActive && state.ironActive && amt >= 35) {
+                steps[0].classList.add('done');
+                steps[1].classList.add('done');
+                steps[2].classList.add('done');
+                steps[3].classList.add('done');
+                steps[4].classList.add('active');
+                coach.classList.add('tone-emerald');
+                coach.textContent = `👍 焊錫已撤離！現在請放開「${ironKey}」提起電烙鐵完成焊接！`;
+            } else if (j.heatTime > 5.2) {
+                coach.classList.add('tone-rose');
+                coach.textContent = `🥵 警告：加熱時間已超過 5.2 秒，即將過熱氧化與焦黑！`;
+            }
+        }
+
+        /* =========================================================
+           7. HTML5 Canvas 擬真工作台繪製引擎
+           （右傾「/」烙鐵配置、對稱「\」焊錫絲與中上方濕海綿）
+           ========================================================= */
+        function getLayoutMetrics(w, h) {
+            const isRight = state.handedness === 'right';
+            // PCB 位於畫布下方 78% 處，上方保留充足空間給中央 HUD 與兩側工具
+            const pcbY = h * 0.78;
+
+            // 濕海綿配置在畫布中上方開闊處（約畫布高度 26% 處），避開中央計量區
+            const sw = Math.min(124, Math.max(92, w * 0.13));
+            const sh = 40;
+            const margin = Math.max(14, w * 0.022);
+            const spongeY = Math.max(106, h * 0.25);
+
+            if (isRight) {
+                // 右撇子模式：焊錫在左（\ 方向）、烙鐵在右（/ 方向）、濕海綿在右中上方
+                return {
+                    ironOnRight: true,
+                    pcbY,
+                    activePinX: w * 0.48,
+                    pcbLeft: -20,
+                    pcbWidth: w + 40,
+                    spongeX: w - sw - margin,
+                    spongeY,
+                    spongeW: sw,
+                    spongeH: sh
+                };
+            } else {
+                // 左撇子模式：烙鐵在左（\ 方向）、焊錫在右（/ 方向）、濕海綿在左中上方
+                return {
+                    ironOnRight: false,
+                    pcbY,
+                    activePinX: w * 0.52,
+                    pcbLeft: -20,
+                    pcbWidth: w + 40,
+                    spongeX: margin,
+                    spongeY,
+                    spongeW: sw,
+                    spongeH: sh
+                };
+            }
+        }
+
+        // 繪製單一焊點（銅箔焊盤、金屬接腳、動態焊錫小山／冷焊／過熱／拉尖）
+        function drawPinAndPad(c, cx, pcbY, scale, joint) {
+            c.save();
+            c.translate(cx, pcbY);
+            c.scale(scale, scale);
+
+            // 過熱焦黑碳化暈圈
+            if (joint.overheatSeverity > 0.05) {
+                const burnR = 26 + joint.overheatSeverity * 14;
+                const burnGrad = c.createRadialGradient(0, 0, 10, 0, 0, burnR);
+                burnGrad.addColorStop(0, `rgba(28, 25, 23, ${0.75 * joint.overheatSeverity})`);
+                burnGrad.addColorStop(1, 'rgba(28, 25, 23, 0)');
+                c.fillStyle = burnGrad;
+                c.beginPath();
+                c.ellipse(0, 0, burnR, 8, 0, 0, Math.PI * 2);
+                c.fill();
+            }
+
+            // 銅箔圓形焊盤
+            const padGrad = c.createLinearGradient(-22, 0, 22, 0);
+            padGrad.addColorStop(0, '#b45309');
+            padGrad.addColorStop(0.5, '#f59e0b');
+            padGrad.addColorStop(1, '#92400e');
+            c.fillStyle = padGrad;
+            c.beginPath();
+            c.ellipse(0, 0, 22, 5.5, 0, 0, Math.PI * 2);
+            c.fill();
+
+            // 元件垂直鍍錫接腳
+            const pinGrad = c.createLinearGradient(-4.5, 0, 4.5, 0);
+            pinGrad.addColorStop(0, '#94a3b8');
+            pinGrad.addColorStop(0.4, '#f8fafc');
+            pinGrad.addColorStop(1, '#64748b');
+            c.fillStyle = pinGrad;
+            c.beginPath();
+            c.roundRect(-4.5, -56, 9, 56, [3, 3, 0, 0]);
+            c.fill();
+
+            // 動態焊錫形態繪製
+            if (joint.solderAmount > 1) {
+                const t = joint.solderAmount / 100;
+                const baseHalfW = Math.min(24, 10 + t * 16);
+                const peakH = Math.min(44, 10 + t * 36);
+
+                const dullFactor = Math.min(1, Math.max(joint.overheatSeverity, joint.coldSolderSeverity * 0.85));
+                const solderGrad = c.createLinearGradient(-baseHalfW, -peakH, baseHalfW, 0);
+                if (dullFactor < 0.35) {
+                    solderGrad.addColorStop(0, '#cbd5e1');
+                    solderGrad.addColorStop(0.38, '#ffffff');
+                    solderGrad.addColorStop(0.75, '#94a3b8');
+                    solderGrad.addColorStop(1, '#475569');
+                } else {
+                    solderGrad.addColorStop(0, '#64748b');
+                    solderGrad.addColorStop(0.45, '#94a3b8');
+                    solderGrad.addColorStop(1, '#334155');
+                }
+
+                c.fillStyle = solderGrad;
+                c.beginPath();
+                c.moveTo(-baseHalfW, -1);
+
+                const isExcess = t > 0.74;
+                const ctrlX = isExcess ? baseHalfW * 1.15 : baseHalfW * 0.42;
+                const ctrlY = isExcess ? -peakH * 0.95 : -peakH * 0.36;
+
+                const icicleOnLeft = joint.sequenceError && state.handedness === 'right';
+                const icicleOnRight = joint.sequenceError && state.handedness === 'left';
+
+                if (icicleOnLeft) {
+                    c.quadraticCurveTo(-baseHalfW * 0.85, -peakH * 0.45, -baseHalfW * 0.98, -peakH * 1.24);
+                    c.quadraticCurveTo(-ctrlX * 0.55, -peakH * 0.92, -4.8, -peakH);
+                } else {
+                    c.quadraticCurveTo(-ctrlX, ctrlY, -4.8, -peakH);
+                }
+
+                c.lineTo(4.8, -peakH);
+
+                if (icicleOnRight) {
+                    c.quadraticCurveTo(ctrlX * 0.55, -peakH * 0.92, baseHalfW * 0.98, -peakH * 1.24);
+                    c.quadraticCurveTo(baseHalfW * 0.85, -peakH * 0.45, baseHalfW, -1);
+                } else {
+                    c.quadraticCurveTo(ctrlX, ctrlY, baseHalfW, -1);
+                }
+
+                c.closePath();
+                c.fill();
+
+                if (dullFactor < 0.4) {
+                    c.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.moveTo(-baseHalfW * 0.42, -5);
+                    c.quadraticCurveTo(-ctrlX * 0.45, ctrlY * 0.85, -3.5, -peakH + 4);
+                    c.stroke();
+                }
+            }
+
+            c.restore();
+        }
+
+        // 繪製濕海綿清潔座（畫布中上方開闊處）
+        function drawSpongeStation(c, layout) {
+            const sx = layout.spongeX;
+            const sy = layout.spongeY;
+            const sw = layout.spongeW;
+            const sh = layout.spongeH;
+
+            spongeHitbox = { x: sx, y: sy, w: sw, h: sh };
+
+            c.save();
+
+            // 深色耐熱海綿盒底座
+            c.fillStyle = '#1e293b';
+            c.strokeStyle = 'rgba(251, 191, 36, 0.55)';
+            c.lineWidth = 1.5;
+            c.beginPath();
+            c.roundRect(sx - 5, sy + 6, sw + 10, sh, 10);
+            c.fill();
+            c.stroke();
+
+            // 黃色濕海綿本體
+            const spongeGrad = c.createLinearGradient(sx, sy, sx, sy + sh);
+            spongeGrad.addColorStop(0, '#fde047');
+            spongeGrad.addColorStop(0.55, '#facc15');
+            spongeGrad.addColorStop(1, '#ca8a04');
+            c.fillStyle = spongeGrad;
+            c.beginPath();
+            c.roundRect(sx, sy, sw, sh - 4, 8);
+            c.fill();
+
+            // 海綿吸水孔洞細節
+            c.fillStyle = 'rgba(161, 98, 7, 0.35)';
+            const holes = [
+                [0.2, 0.32, 2.5], [0.42, 0.25, 2], [0.68, 0.35, 2.8],
+                [0.3, 0.62, 2.2], [0.55, 0.58, 2.6], [0.8, 0.55, 2.1]
+            ];
+            holes.forEach(([rx, ry, r]) => {
+                c.beginPath();
+                c.arc(sx + sw * rx, sy + (sh - 4) * ry, r, 0, Math.PI * 2);
+                c.fill();
+            });
+
+            // 若烙鐵頭髒污（<75%），加上金色呼吸提示框
+            if (state.ironCleanliness < 75) {
+                const pulse = 0.45 + 0.45 * Math.sin(performance.now() * 0.006);
+                c.strokeStyle = `rgba(253, 224, 71, ${pulse})`;
+                c.lineWidth = 2.5;
+                c.beginPath();
+                c.roundRect(sx - 7, sy - 3, sw + 14, sh + 11, 12);
+                c.stroke();
+            }
+
+            // 下方標籤
+            c.fillStyle = '#fef08a';
+            c.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif';
+            c.textAlign = 'center';
+            c.fillText('🧽 濕海綿 (點我 / Space)', sx + sw / 2, sy + sh + 19);
+
+            c.restore();
+        }
+
+        // 繪製電烙鐵：
+        // 右撇子模式（isRight = true）：位於右側呈「/」右傾方向（橘色握柄在右上方、烙鐵尖端朝左下方接觸焊點）
+        // 左撇子模式（isRight = false）：水平鏡像翻轉，位於左側呈「\」方向（橘色握柄在左上方、烙鐵尖端朝右下方接觸焊點）
+        function drawSolderingIron(c, w, h, layout) {
+            c.save();
+
+            const isRight = layout.ironOnRight;
+            const activePinX = layout.activePinX;
+            const pcbY = layout.pcbY;
+            const dir = isRight ? 1 : -1;
+            const ironAngle = 0.52; // 約 30° 傾斜角，維持在中央 HUD 下方不遮擋計量條
+
+            let tipX, tipY;
+
+            if (state.spongeAnimTimer > 0) {
+                // 擦海綿動畫：烙鐵尖端在濕海綿上方保持右傾（或左撇子鏡像）來回擦拭
+                const progress = 1 - state.spongeAnimTimer / 0.52;
+                const wiggle = Math.sin(progress * Math.PI * 4) * (spongeHitbox.w * 0.24);
+                tipX = spongeHitbox.x + spongeHitbox.w * (isRight ? 0.36 : 0.64) + wiggle;
+                tipY = spongeHitbox.y + 8;
+            } else {
+                // 沿著烙鐵自身軸線（「/」或「\」）從右上方推進至焊點或退回待機位置
+                const contactX = activePinX + dir * 9;
+                const contactY = pcbY - 6;
+                const pullBack = Math.min(76, w * 0.085);
+
+                const restX = contactX + dir * Math.cos(ironAngle) * pullBack;
+                const restY = contactY - Math.sin(ironAngle) * pullBack;
+
+                tipX = restX + (contactX - restX) * state.ironLerp;
+                tipY = restY + (contactY - restY) * state.ironLerp;
+            }
+
+            c.translate(tipX, tipY);
+            if (!isRight) {
+                // 左撇子模式以垂直線鏡射翻轉
+                c.scale(-1, 1);
+            }
+            // 旋轉 -ironAngle：本地 +X 軸（套筒與橘色握把）朝右上方延伸，形成「/」右傾姿態
+            c.rotate(-ironAngle);
+
+            // 1) 烙鐵尖端（潔淨時呈銀白金屬光澤，氧化髒污時呈暗灰褐色）
+            const cleanRatio = state.ironCleanliness / 100;
+            const tipGrad = c.createLinearGradient(0, -5, 42, 5);
+            if (cleanRatio >= 0.75) {
+                tipGrad.addColorStop(0, '#f8fafc');
+                tipGrad.addColorStop(0.6, '#cbd5e1');
+                tipGrad.addColorStop(1, '#64748b');
+            } else {
+                tipGrad.addColorStop(0, '#334155');
+                tipGrad.addColorStop(0.6, '#475569');
+                tipGrad.addColorStop(1, '#1e293b');
+            }
+            c.fillStyle = tipGrad;
+            c.beginPath();
+            c.moveTo(0, 0);
+            c.lineTo(42, -7);
+            c.lineTo(42, 7);
+            c.closePath();
+            c.fill();
+
+            // 加熱接觸時的微弱高溫橘紅光暈
+            if (state.ironActive && state.ironLerp > 0.7) {
+                c.fillStyle = 'rgba(251, 146, 60, 0.35)';
+                c.beginPath();
+                c.arc(6, 0, 8, 0, Math.PI * 2);
+                c.fill();
+            }
+
+            // 2) 不鏽鋼加熱套筒
+            const barrelGrad = c.createLinearGradient(42, -9, 42, 9);
+            barrelGrad.addColorStop(0, '#94a3b8');
+            barrelGrad.addColorStop(0.5, '#e2e8f0');
+            barrelGrad.addColorStop(1, '#475569');
+            c.fillStyle = barrelGrad;
+            c.beginPath();
+            c.roundRect(42, -8.5, 66, 17, 3);
+            c.fill();
+
+            // 散熱孔裝飾
+            c.fillStyle = '#1e293b';
+            [56, 70, 84].forEach(hx => {
+                c.beginPath();
+                c.arc(hx, 0, 2.5, 0, Math.PI * 2);
+                c.fill();
+            });
+
+            // 3) 隔熱護環
+            c.fillStyle = '#0f172a';
+            c.beginPath();
+            c.roundRect(106, -11, 12, 22, 4);
+            c.fill();
+
+            // 4) 橘色人體工學防滑握把（位於右上方）
+            const handleGrad = c.createLinearGradient(118, -13, 118, 13);
+            handleGrad.addColorStop(0, '#fb923c');
+            handleGrad.addColorStop(0.5, '#ea580c');
+            handleGrad.addColorStop(1, '#9a3412');
+            c.fillStyle = handleGrad;
+            c.beginPath();
+            c.roundRect(118, -12.5, 110, 25, [5, 12, 12, 5]);
+            c.fill();
+
+            // 握把尾端護套與電源線
+            c.fillStyle = '#1e293b';
+            c.beginPath();
+            c.roundRect(226, -7, 14, 14, 3);
+            c.fill();
+
+            c.strokeStyle = 'rgba(51, 65, 85, 0.85)';
+            c.lineWidth = 4.5;
+            c.beginPath();
+            c.moveTo(240, 0);
+            c.quadraticCurveTo(275, 4, 305, 24);
+            c.stroke();
+
+            c.restore();
+        }
+
+        // 繪製焊錫絲（右撇子模式下位於左側呈「\」角度，與右側「/」烙鐵對稱會合於焊點）
+        function drawSolderWire(c, w, h, layout) {
+            c.save();
+
+            const wireOnLeft = layout.ironOnRight;
+            const activePinX = layout.activePinX;
+            const pcbY = layout.pcbY;
+            const dir = wireOnLeft ? -1 : 1;
+            const wireAngle = 0.52;
+
+            const contactX = activePinX + dir * 9;
+            const contactY = pcbY - 9;
+            const pullBack = Math.min(76, w * 0.085);
+
+            const restX = contactX + dir * Math.cos(wireAngle) * pullBack;
+            const restY = contactY - Math.sin(wireAngle) * pullBack;
+
+            const tipX = restX + (contactX - restX) * state.solderLerp;
+            const tipY = restY + (contactY - restY) * state.solderLerp;
+
+            c.translate(tipX, tipY);
+            if (wireOnLeft) {
+                // 右撇子模式：焊錫在左側，水平鏡像後旋轉 -wireAngle 呈「\」角度（藍管左上、錫絲右下）
+                c.scale(-1, 1);
+            }
+            c.rotate(-wireAngle);
+
+            // 銀色焊錫絲前端
+            const wireGrad = c.createLinearGradient(0, -2.5, 110, 2.5);
+            wireGrad.addColorStop(0, '#f8fafc');
+            wireGrad.addColorStop(0.5, '#cbd5e1');
+            wireGrad.addColorStop(1, '#94a3b8');
+            c.fillStyle = wireGrad;
+            c.beginPath();
+            c.roundRect(0, -2.4, 110, 4.8, 2);
+            c.fill();
+
+            // 藍色手持導管握套
+            const sleeveGrad = c.createLinearGradient(108, -10, 108, 10);
+            sleeveGrad.addColorStop(0, '#38bdf8');
+            sleeveGrad.addColorStop(1, '#0284c7');
+            c.fillStyle = sleeveGrad;
+            c.beginPath();
+            c.roundRect(108, -10, 74, 20, 7);
+            c.fill();
+
+            // 握套文字（鏡像時自動翻正）
+            c.save();
+            c.translate(145, 0);
+            if (wireOnLeft) c.scale(-1, 1);
+            c.fillStyle = '#f0f9ff';
+            c.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif';
+            c.textAlign = 'center';
+            c.fillText('Sn63 焊錫', 0, 4);
+            c.restore();
+
+            c.restore();
+        }
+
+        function drawParticles(c) {
+            state.particles.forEach(p => {
+                const ratio = Math.max(0, p.life / p.maxLife);
+                c.fillStyle = `rgba(${p.color}, ${p.alpha * ratio})`;
+                c.beginPath();
+                c.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                c.fill();
+            });
+        }
+
+        function renderScene() {
+            const w = canvasWrapper.clientWidth;
+            const h = canvasWrapper.clientHeight;
+            ctx.clearRect(0, 0, w, h);
+
+            // 1) 背景工程方格線
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.055)';
+            ctx.lineWidth = 1;
+            const gridSize = 36;
+            for (let gx = 0; gx < w; gx += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(gx, 0);
+                ctx.lineTo(gx, h);
+                ctx.stroke();
+            }
+            for (let gy = 0; gy < h; gy += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, gy);
+                ctx.lineTo(w, gy);
+                ctx.stroke();
+            }
+
+            const layout = getLayoutMetrics(w, h);
+            const pcbY = layout.pcbY;
+            const activePinX = layout.activePinX;
+            const pinSpacing = Math.max(135, w * 0.21);
+
+            // 2) 綠色 PCB 電路板主體
+            ctx.fillStyle = '#064e3b';
+            ctx.fillRect(layout.pcbLeft, pcbY + 8, layout.pcbWidth, 36);
+
+            const pcbGrad = ctx.createLinearGradient(0, pcbY, 0, pcbY + 24);
+            pcbGrad.addColorStop(0, '#10b981');
+            pcbGrad.addColorStop(0.25, '#059669');
+            pcbGrad.addColorStop(1, '#065f46');
+            ctx.fillStyle = pcbGrad;
+            ctx.fillRect(layout.pcbLeft, pcbY, layout.pcbWidth, 24);
+
+            // PCB 裝飾走線
+            ctx.strokeStyle = 'rgba(110, 231, 183, 0.25)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, pcbY + 12);
+            ctx.lineTo(w, pcbY + 12);
+            ctx.stroke();
+
+            // 3) 繪製 5 個焊點（J1 ~ J5）
+            state.joints.forEach((joint, idx) => {
+                const offsetIdx = idx - state.currentJointIdx;
+                const px = activePinX + offsetIdx * pinSpacing + state.pcbSlideOffset;
+                if (px < -50 || px > w + 50) return;
+
+                const isCurrent = idx === state.currentJointIdx;
+                ctx.save();
+                if (!isCurrent) ctx.globalAlpha = 0.5;
+                drawPinAndPad(ctx, px, pcbY, isCurrent ? 1.0 : 0.85, joint);
+
+                ctx.fillStyle = isCurrent ? '#ecfdf5' : '#6ee7b7';
+                ctx.font = 'bold 12px ui-monospace, Consolas, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`J${idx + 1}`, px, pcbY + 17);
+                ctx.restore();
+            });
+
+            // 當前目標焊點上方指示標記
+            const curJoint = state.joints[state.currentJointIdx];
+            if (curJoint.status === 'idle') {
+                const bob = Math.sin(performance.now() * 0.005) * 4;
+                ctx.fillStyle = '#34d399';
+                ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('▼ 目標焊點', activePinX, pcbY - 70 + bob);
+            }
+
+            // 4) 繪製中上方濕海綿清潔座
+            drawSpongeStation(ctx, layout);
+
+            // 5) 繪製煙霧與蒸氣粒子
+            drawParticles(ctx);
+
+            // 6) 繪製右傾電烙鐵與對稱焊錫絲
+            drawSolderingIron(ctx, w, h, layout);
+            drawSolderWire(ctx, w, h, layout);
+        }
+
+        /* =========================================================
+           8. 最終「焊接檢定成績單」與縮圖渲染
+           ========================================================= */
+        function createJointThumbnailDataURL(joint) {
+            const off = document.createElement('canvas');
+            off.width = 140;
+            off.height = 96;
+            const octx = off.getContext('2d');
+
+            octx.fillStyle = '#070d19';
+            octx.fillRect(0, 0, 140, 96);
+
+            octx.fillStyle = '#059669';
+            octx.fillRect(0, 74, 140, 22);
+
+            drawPinAndPad(octx, 70, 74, 1.05, joint);
+            return off.toDataURL('image/png');
+        }
+
+        function openFinalReportModal() {
+            const total = state.joints.reduce((acc, j) => acc + (j.score ?? 0), 0);
+            const avg = Math.round(total / TOTAL_JOINTS);
+
+            let grade = 'D';
+            let rankTitle = 'D 級 · 焊接新手見習生';
+            if (avg >= 92) {
+                grade = 'S';
+                rankTitle = 'S 級 · 金牌電子焊接大師';
+            } else if (avg >= 82) {
+                grade = 'A';
+                rankTitle = 'A 級 · 專業產線技術士';
+            } else if (avg >= 70) {
+                grade = 'B';
+                rankTitle = 'B 級 · 合格電子實作員';
+            } else if (avg >= 55) {
+                grade = 'C';
+                rankTitle = 'C 級 · 基礎焊接練習生';
+            }
+
+            document.getElementById('reportGradeBadge').textContent = grade;
+            document.getElementById('reportRankTitle').textContent = rankTitle;
+            document.getElementById('reportAvgText').textContent = `五點總平均：${avg} 分`;
+
+            const thumbsGrid = document.getElementById('reportThumbsGrid');
+            thumbsGrid.innerHTML = state.joints.map((j, idx) => {
+                const url = createJointThumbnailDataURL(j);
+                const color = j.score >= 85 ? '#34d399' : j.score >= 65 ? '#fbbf24' : '#fb7185';
+                return `
+                    <div class="thumb-card">
+                        <img src="${url}" alt="焊點 J${idx + 1}" class="thumb-canvas">
+                        <div style="font-size: 12px; font-weight: 800;">J${idx + 1}</div>
+                        <div style="font-size: 13px; font-weight: 900; color: ${color};">${j.score} 分</div>
+                    </div>
+                `;
+            }).join('');
+
+            const tips = [];
+            if (state.joints.some(j => j.ironCleanAtStart < 75)) {
+                tips.push('• <strong>記得先擦海綿：</strong>部分焊點開始前烙鐵頭已氧化，按 Space 擦拭可大幅提升導熱。');
+            }
+            if (state.joints.some(j => (j.preheatAtFirstSolder ?? 0) < 2.2)) {
+                tips.push('• <strong>耐心預熱 3 秒：</strong>送焊錫前先讓烙鐵充分加熱焊盤與接腳，可避免冷焊。');
+            }
+            if (state.joints.some(j => j.heatTime > 5.2)) {
+                tips.push('• <strong>留意加熱總時間：</strong>超過 5.2 秒容易造成焊錫氧化黯淡與焊盤焦黑。');
+            }
+            if (state.joints.some(j => j.sequenceError)) {
+                tips.push('• <strong>注意撤離順序：</strong>務必「先放開焊錫絲、再提起電烙鐵」，才不會拉出尖刺。');
+            }
+            if (tips.length === 0) {
+                tips.push('• <strong>太厲害了！</strong>你的預熱節奏、焊錫量控制與撤離順序都非常標準，歡迎切換至「🏆 實戰測驗模式」挑戰無計量條盲測！');
+            }
+
+            document.getElementById('reportAdviceBox').innerHTML =
+                `<div style="font-weight: 800; color: #38bdf8; margin-bottom: 4px;">📋 教練綜合講評與建議：</div>` +
+                tips.join('<br>');
+
+            document.getElementById('reportModal').classList.remove('hidden');
+        }
+
+        /* =========================================================
+           9. 主遊戲動畫迴圈啟動
+           ========================================================= */
+        let lastTimestamp = 0;
+
+        function gameLoop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+            lastTimestamp = timestamp;
+
+            updateSimulation(dt);
+            updateHUD();
+            renderScene();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function () {
+            resizeCanvas();
+            setHandedness('right');
+            setMode('teach');
+            renderProgressRow();
+            updateHUD();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
