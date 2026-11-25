@@ -1,4 +1,4 @@
-#  電子焊接模擬器 (Virtual Soldering Lab)
+#  電子焊接模擬器 (Soldering Trainer)
 
 做了一個焊接模擬器，練習焊出完美的焊點!
 
